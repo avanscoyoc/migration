@@ -1,0 +1,89 @@
+---
+title: "Migration Map"
+author: "Amy Van Scoyoc"
+date: "4/16/2019"
+output: html_document
+---
+
+```{r, message=FALSE}
+library(maptools)
+library(tidyverse)
+```
+
+
+```{r}
+# migration datasheet
+loc_data <- read.csv("migration_map_latlong.csv", stringsAsFactors = FALSE)
+
+n_studies <- loc_data %>% 
+  group_by(Latitude, Longitude) %>% 
+  tally()
+
+# online map without antarctica
+m <- map_data("world") %>% 
+  filter(region != "Antarctica")
+
+# theme for map figures
+theme <- theme(axis.line=element_blank(),
+      axis.text.x=element_blank(),
+      axis.text.y=element_blank(),
+      axis.ticks=element_blank(),
+      axis.title.x=element_blank(),
+      axis.title.y=element_blank(),
+      panel.background=element_blank(),
+      panel.border=element_blank(),
+      panel.grid.major=element_blank(),
+      panel.grid.minor=element_blank(),
+      plot.background=element_blank())
+```
+
+```{r}
+#plot map for # studies
+ggplot() +
+  geom_polygon(data=m, aes(x=long, y=lat, group=group), fill='grey40') + 
+  coord_cartesian(xlim=c(-180,180), ylim=c(-90,90)) + 
+  scale_x_continuous(breaks=seq(-180,180,20)) + 
+  scale_y_continuous(breaks=seq(-90,90,10)) +
+  geom_point(data = n_studies, aes(x = Longitude, y = Latitude, size = n), color = "orange", alpha = 0.5) +
+  ggtitle("Studies measuring ungulate migration change") + 
+  guides(size = guide_legend(title = "# of studies")) +
+  theme
+```
+
+```{r}
+n_species <- loc_data %>% 
+  group_by(Common.Name, Latitude, Longitude) %>% 
+  tally()
+
+# plot map with species and studies 
+ggplot() +
+  geom_polygon(data=m, aes(x=long, y=lat, group=group), fill='grey40') + 
+  coord_cartesian(xlim=c(-180,180), ylim=c(-90,90)) + 
+  scale_x_continuous(breaks=seq(-180,180,20)) + 
+  scale_y_continuous(breaks=seq(-90,90,10)) +
+  geom_point(data = n_species, aes(x = Longitude, y = Latitude, size = n, color = Common.Name), alpha = 0.5) +
+  ggtitle("Studies measuring ungulate migration change") + 
+  guides(color = guide_legend(title = "species"), size = guide_legend(title = "# of studies")) +
+  theme
+```
+ ## Cluster option
+ 
+```{r}
+library(leaflet)
+
+popup_content <- paste("<b>Species:</b>", loc_data$Common.Name,"<br>", 
+                       "<b>Scientific Name</b>: ", loc_data$Scientific.Name, "<br>",
+                       "<b>Type:</b> ", loc_data$Pp....details, "<br>",
+                       "<b>Cause: </b>", loc_data$Cause.1, "<br>",
+                       "<b>Study Reference:</b>", loc_data$Citation.abbrv
+                       )
+
+map <- leaflet(loc_data) %>%
+  addProviderTiles("CartoDB.Positron") %>%   
+  addMarkers(~Longitude, ~Latitude, popup= popup_content,
+            ###<b>
+            clusterOptions = 1)
+
+map
+```
+ 
